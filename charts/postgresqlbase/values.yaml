@@ -1,0 +1,43 @@
+images:
+  postgres92: eu.gcr.io/pg-demo-eu/postgres92:15Oct2017
+  postgres95: eu.gcr.io/pg-demo-eu/postgres95:15Oct2017
+  postgres96: eu.gcr.io/pg-demo-eu/postgres96:15Oct2017
+imagePullPolicy: IfNotPresent
+replicas: 1
+type: standalone
+useLbex: false
+pgVersion: '9.2'
+#pgServiceClusterIP: 10.156.1.1 # MUST change for each deployment
+resources:
+  containerPort: 5432
+  cpu: 200m
+  memory: 512Mi
+  persistence:
+    storageClass: standard
+    storageClassType: standard
+    storageClassZone: europe-west3-b
+    accessModes:
+    - ReadWriteOnce
+    size: 2Gi
+pgconfig:
+  maxWalSenders: 6
+  checkpointSegments: 30 #Used for PG 9.2, deprecated in later versions
+  minWalSize: 80Mi #Added in PG 9.5
+  maxWalSize: 1Gi #Added in PG 9.5
+  walKeepSegments: 30
+credentials:
+  masterPassword: changeme
+  replicationMaster: changeme
+  replicationUser: changeme
+  replicationPassword: changme
+  sshPrivateKey: changeme
+replication:
+  type: pgbasebackup #either pgbasebackup or rsync
+  rsync:
+    nfsMountIP: changeme
+    nfsMountPath: changeme
+    nfsMountSize: 1Gi
+    rsyncUser: changeme
+    barmanServer: changeme
+    clusterDirectory: /change/me
+    walDirectory: /change/me

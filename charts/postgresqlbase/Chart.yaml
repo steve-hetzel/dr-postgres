@@ -1,0 +1,15 @@
+description: The world's most advanced open source database.
+home: https://github.com/samsung-cnct/zonar-postgres
+keywords:
+- postgresql
+- database
+- sql
+maintainers:
+- email: stevehetzel.samsung@gmail.com
+  name: Steve Hetzel
+- email: maratoid@gmail.com
+  name: Marat Garafutdinov
+name: postgresqlbase
+sources:
+- https://github.com/samsung-cnct/dr-postgres/
+version: 2.2.3

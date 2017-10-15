@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+    app: {{ template "fullname" . }}
+    release: "{{ .Release.Name }}"
+spec:
+  ports:
+  - name: postgres
+    port: {{ .Values.resources.containerPort }}
+  clusterIP: {{ .Values.pgServiceClusterIP }}
+  selector:
+    app: {{ template "fullname" . }}

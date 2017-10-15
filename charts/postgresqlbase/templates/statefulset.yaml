@@ -1,0 +1,109 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+    release: "{{ .Release.Name }}"
+  annotations:
+    "helm.sh/created": {{ .Release.Time.Seconds | quote }}
+    "checksum/config92": {{ include (print $.Template.BasePath "/pgconfig92.yaml") . | sha256sum }}
+    "checksum/config95": {{ include (print $.Template.BasePath "/pgconfig95.yaml") . | sha256sum }}
+    "checksum/config96": {{ include (print $.Template.BasePath "/pgconfig96.yaml") . | sha256sum }}
+spec:
+  serviceName: {{ template "fullname" . }}
+  replicas: {{ .Values.replicas }}
+  template:
+    metadata:
+      name: {{ template "fullname" . }}
+      labels:
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+        app: {{ template "fullname" . }}
+        release: "{{ .Release.Name }}"
+      annotations:
+        "helm.sh/created": {{.Release.Time.Seconds | quote }}
+        "pod.beta.kubernetes.io/initialized": "true"
+        "pod.beta.kubernetes.io/init-containers": '[
+          {
+            "name": "postgres-init",
+            "imagePullPolicy": "Always",
+            "image": "{{ template "pgimage" . }}",
+            "args": ["init"],
+            "env": [
+              {
+                "name": "POSTGRES_TYPE",
+                "value": "{{ .Values.type }}"
+              },
+              {
+                "name": "PGDATA",
+                "value": "/var/lib/postgresql/data/pgdata"
+              },
+              {{ if eq .Values.type "replica" }}
+              {
+                "name": "REPLICATION_MASTER",
+                "value": "{{ .Values.credentials.replicationMaster }}"
+              },
+              {
+                "name": "REPLICATION_USER",
+                "value": "{{ .Values.credentials.replicationUser }}"
+              },
+              {
+                "name": "REPLICATION_PASSWORD",
+                "value": "{{ .Values.credentials.replicationPassword }}"
+              },
+              {{ end }}
+              {
+                "name": "POSTGRES_PASSWORD",
+                "value": "{{ .Values.credentials.masterPassword }}"
+              }
+            ],
+            "volumeMounts": [
+              {
+                "name": "pgdata",
+                "mountPath": "/var/lib/postgresql/data"
+              }
+            ]
+          }
+        ]'
+    spec:
+      containers:
+      - name: postgres
+        securityContext:
+          privileged: true
+        image: {{ template "pgimage" . }}
+        args: ["run"]
+        env:
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: {{ .Values.resources.containerPort }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.cpu }}
+            memory: {{ .Values.resources.memory }}
+        volumeMounts:
+        - name: pgdata
+          mountPath: /var/lib/postgresql/data
+        - name: pg-config
+          mountPath: /opt/pgdata
+        - name: ssh-secret
+          mountPath: /opt/ssh-secret
+      volumes:
+      - name: pg-config
+        configMap:
+          name: "{{ .Release.Name }}-postgres-config"
+          defaultMode: 0775
+      - name: ssh-secret
+        secret:
+          secretName: "gcp-replication-ssh-key-{{ .Release.Name }}"
+          defaultMode: 0600
+  volumeClaimTemplates:
+  - metadata:
+      name: pgdata
+      annotations:
+        volume.beta.kubernetes.io/storage-class: {{ .Values.resources.persistence.storageClass }}
+    spec:
+      accessModes: {{ .Values.resources.persistence.accessModes }}
+      resources:
+        requests:
+          storage: {{ .Values.resources.persistence.size }}
