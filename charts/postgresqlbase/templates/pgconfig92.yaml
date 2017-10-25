@@ -1,3 +1,4 @@
+{{ if eq .Values.pgVersion "9.2" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1320,4 +1321,5 @@ data:
     primary_conninfo = 'host={{ .Values.credentials.replicationMaster }} port={{ .Values.resources.containerPort }} user={{ .Values.credentials.replicationUser }} sslmode=prefer'
     trigger_file = '/tmp/postgresql.trigger'
     recovery_target_timeline = 'latest'
+{{ end }}
 {{ end }}
