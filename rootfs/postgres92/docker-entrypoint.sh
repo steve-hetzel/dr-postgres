@@ -25,6 +25,8 @@ if [ "$1" = 'init' ]; then
 
   # look specifically for PG_VERSION, as it is expected in the DB dir
   if [ ! -s "$PGDATA/PG_VERSION" ]; then
+
+    echo "Running initdb $POSTGRES_INITDB_ARGS"
     eval "gosu postgres initdb $POSTGRES_INITDB_ARGS"
 
     # check password first so we can output the warning before postgres
@@ -37,7 +39,7 @@ if [ "$1" = 'init' ]; then
       pass=
       authMethod=trust
     fi
-
+  else
     # internal start of server in order to allow set-up using psql-client
     # does not listen on external TCP/IP and waits until start finishes
     gosu postgres pg_ctl -D "$PGDATA" \
@@ -45,7 +47,7 @@ if [ "$1" = 'init' ]; then
       -w start
 
     if [ "$POSTGRES_DB" != 'postgres' ]; then
-      psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE DATABASE $POSTGRES_DB ;"
+      psql -v -U postgres -c "CREATE DATABASE $POSTGRES_DB ;"
     fi
 
     if [ "$POSTGRES_USER" = 'postgres' ]; then
@@ -53,21 +55,20 @@ if [ "$1" = 'init' ]; then
     else
       op='CREATE'
     fi
-    psql -v ON_ERROR_STOP=1 -U postgres -c "$op USER \"$POSTGRES_USER\" WITH SUPERUSER $pass ;"
+    psql -v -U postgres -c "$op USER \"$POSTGRES_USER\" WITH SUPERUSER $pass ;"
 
-    psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE USER admin WITH SUPERUSER LOGIN PASSWORD 'admin' ;"
-    psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE DATABASE template_postgis;"
+    psql -v -U postgres -c "CREATE USER admin WITH SUPERUSER LOGIN PASSWORD 'admin' ;"
+    psql -v -U postgres -c "CREATE DATABASE template_postgis;"
 
-    psql -v ON_ERROR_STOP=1 -U postgres -c "UPDATE pg_database SET datistemplate = TRUE WHERE datname = 'template_postgis';"
+    psql -v -U postgres -c "UPDATE pg_database SET datistemplate = TRUE WHERE datname = 'template_postgis';"
 
-    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
-    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;"
-    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;"
-    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS amqp;"
+    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
+    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;"
+    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;"
+    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS amqp;"
 
-    psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE ROLE $REPLICATION_USER REPLICATION LOGIN PASSWORD '$REPLICATION_PASSWORD';"
-
+    psql -v -U postgres -d postgres -c "CREATE ROLE $REPLICATION_USER REPLICATION LOGIN PASSWORD '$REPLICATION_PASSWORD';"
 
     gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
   fi

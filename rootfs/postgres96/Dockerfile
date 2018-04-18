@@ -85,6 +85,7 @@ RUN apt-get update \
 					 wget \
 					 ssh \
 					 rsync \
+					 vim \
       && rm -rf /var/lib/apt/lists/*
 
 

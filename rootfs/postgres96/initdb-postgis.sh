@@ -22,4 +22,9 @@ CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;
 CREATE EXTENSION IF NOT EXISTS amqp;
 EOSQL
 
-#removed looping for template DB's
+CREATE ROLE replication REPLICATION LOGIN PASSWORD 'replication';
+
+CREATE DATABASE foo;
+\c foo
+CREATE TABLE bar (key int);
+INSERT INTO bar VALUES (666);

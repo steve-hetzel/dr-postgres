@@ -12,7 +12,6 @@ REPLICATION_MASTER="${REPLICATION_MASTER:-localhost}"
 REPLICATION_PASSWORD="${REPLICATION_PASSWORD:-replication}"
 
 export PGPASSWORD="$REPLICATION_PASSWORD"
-
 if [ "$1" = 'init' ]; then
   echo "Creating PGDATA directory and permissions"
   mkdir -p "$PGDATA" \
@@ -21,13 +20,11 @@ if [ "$1" = 'init' ]; then
 
   mkdir -p /run/postgresql \
     && chmod g+s /run/postgresql \
-		&& chown -R postgres /run/postgresql
+    && chown -R postgres /run/postgresql
+
 
   # look specifically for PG_VERSION, as it is expected in the DB dir
-  # if it doesn't exist - init the data
   if [ ! -s "$PGDATA/PG_VERSION" ]; then
-
-    echo "Running initdb $POSTGRES_INITDB_ARGS"
     eval "gosu postgres initdb $POSTGRES_INITDB_ARGS"
 
     # check password first so we can output the warning before postgres
@@ -40,43 +37,41 @@ if [ "$1" = 'init' ]; then
       pass=
       authMethod=trust
     fi
-    echo "Postgres User: $POSTGRES_USER"
-    echo "Postgres DB: $POSTGRES_DB"
+
+    echo "PGDATA: $PGDATA"
 
     # internal start of server in order to allow set-up using psql-client
     # does not listen on external TCP/IP and waits until start finishes
-    echo "starting DB listening to localhost"
+
+    echo "Starting postgres for the first time in init."
     gosu postgres pg_ctl -D "$PGDATA" \
       -o "-c listen_addresses='localhost'" \
       -w start
 
-    if [ "$POSTGRES_USER" != 'postgres' ]; then
-      echo "creating POSTGRES_USER"
-      psql -v -U postgres -c "CREATE USER \"$POSTGRES_USER\" WITH SUPERUSER $POSTGRES_PASSWORD ;"
-    fi
-
     if [ "$POSTGRES_DB" != 'postgres' ]; then
-      echo "creating POSTGRES_DB"
-      psql -v -U postgres -c "CREATE DATABASE $POSTGRES_DB ;"
+      psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE DATABASE $POSTGRES_DB ;"
     fi
 
-    echo "creating admin user"
-    psql -v -U postgres -d postgres -c "CREATE USER admin WITH SUPERUSER LOGIN PASSWORD 'admin' ;"
-    echo "creating template_postgis"
-    psql -v -U postgres -d postgres -c "CREATE DATABASE template_postgis;"
+    if [ "$POSTGRES_USER" = 'postgres' ]; then
+      op='ALTER'
+    else
+      op='CREATE'
+    fi
+    psql -v ON_ERROR_STOP=1 -U postgres -c "$op USER \"$POSTGRES_USER\" WITH SUPERUSER $pass ;"
 
-    echo "updating pg_database"
-    psql -v -U postgres -d postgres -c "UPDATE pg_database SET datistemplate = TRUE WHERE datname = 'template_postgis';"
+    psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE USER admin WITH SUPERUSER LOGIN PASSWORD 'admin' ;"
+    psql -v ON_ERROR_STOP=1 -U postgres -c "CREATE DATABASE template_postgis;"
 
-    echo "creating templates/extensions"
-    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
-    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;"
-    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;"
-    psql -v -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS amqp;"
+    psql -v ON_ERROR_STOP=1 -U postgres -c "UPDATE pg_database SET datistemplate = TRUE WHERE datname = 'template_postgis';"
 
-    echo "creating REPLICATION_USER"
-    psql -v -U postgres -d postgres -c "CREATE ROLE $REPLICATION_USER REPLICATION LOGIN PASSWORD '$REPLICATION_PASSWORD';"
+    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;"
+    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;"
+    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;"
+    psql -v ON_ERROR_STOP=1 -U postgres -d template_postgis -c "CREATE EXTENSION IF NOT EXISTS amqp;"
+
+    psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE ROLE $REPLICATION_USER REPLICATION LOGIN PASSWORD '$REPLICATION_PASSWORD';"
+
 
     gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
   fi
@@ -113,15 +108,15 @@ elif [ "$1" = 'run' ]; then
     && chown postgres:postgres /opt/pgdata/*
 
   # copy our templated config values from config map into the PGDATA
-  rm $PGDATA/postgresql.conf \
-    && rm $PGDATA/pg_hba.conf \
-		    && cp -p /opt/pgdata/*.conf "$PGDATA"
+  #rm $PGDATA/postgresql.conf \
+#    && rm $PGDATA/pg_hba.conf \
+    #&& cp -p /opt/pgdata/*.conf "$PGDATA"
+
 
   echo 'Starting postgres'
   gosu postgres pg_ctl -D "$PGDATA" \
       -o "-c listen_addresses='*'" \
-      -w start \
-      -U $POSTGRES_USER
+      -w start
 
   # keep pod alive and allow for interactive service stop/start/restart following config changes
   tail -f /dev/null

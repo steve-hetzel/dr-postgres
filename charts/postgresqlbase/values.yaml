@@ -1,12 +1,12 @@
 images:
-  postgres92: eu.gcr.io/pg-demo-eu/postgres92:15Oct2017
-  postgres95: eu.gcr.io/pg-demo-eu/postgres95:15Oct2017
-  postgres96: eu.gcr.io/pg-demo-eu/postgres96:15Oct2017
+  postgres92: eu.gcr.io/devopsitalia-demo-eu/postgres92:latest
+  postgres95: eu.gcr.io/devopsitalia-demo-eu/postgres95:latest
+  postgres96: eu.gcr.io/devopsitalia-demo-eu/postgres96:latest
 imagePullPolicy: IfNotPresent
 replicas: 1
-type: standalone
+type: replica
 useLbex: false
-pgVersion: '9.2'
+pgVersion: '9.6'
 #pgServiceClusterIP: 10.156.1.1 # MUST change for each deployment
 resources:
   containerPort: 5432
@@ -22,21 +22,21 @@ resources:
 pgconfig:
   maxWalSenders: 6
   checkpointSegments: 30 #Used for PG 9.2, deprecated in later versions
-  minWalSize: 80Mi #Added in PG 9.5
-  maxWalSize: 1Gi #Added in PG 9.5
+  minWalSize: 80MB #Added in PG 9.5
+  maxWalSize: 1GB #Added in PG 9.5
   walKeepSegments: 30
 credentials:
-  masterPassword: changeme
-  replicationMaster: changeme
-  replicationUser: changeme
-  replicationPassword: changme
+  masterPassword: admin
+  replicationMaster: primary.demo.svc.cluster.local
+  replicationUser: replication
+  replicationPassword: replication
   sshPrivateKey: changeme
 replication:
   type: pgbasebackup #either pgbasebackup or rsync
   rsync:
     nfsMountIP: changeme
     nfsMountPath: changeme
-    nfsMountSize: 1Gi
+    nfsMountSize: 1GB
     rsyncUser: changeme
     barmanServer: changeme
     clusterDirectory: /change/me

@@ -23,48 +23,6 @@ spec:
       annotations:
         "helm.sh/created": {{.Release.Time.Seconds | quote }}
         "pod.beta.kubernetes.io/initialized": "true"
-        "pod.beta.kubernetes.io/init-containers": '[
-          {
-            "name": "postgres-init",
-            "imagePullPolicy": "Always",
-            "image": "{{ template "pgimage" . }}",
-            "args": ["init"],
-            "env": [
-              {
-                "name": "POSTGRES_TYPE",
-                "value": "{{ .Values.type }}"
-              },
-              {
-                "name": "PGDATA",
-                "value": "/var/lib/postgresql/data/pgdata"
-              },
-              {{ if eq .Values.type "replica" }}
-              {
-                "name": "REPLICATION_MASTER",
-                "value": "{{ .Values.credentials.replicationMaster }}"
-              },
-              {
-                "name": "REPLICATION_USER",
-                "value": "{{ .Values.credentials.replicationUser }}"
-              },
-              {
-                "name": "REPLICATION_PASSWORD",
-                "value": "{{ .Values.credentials.replicationPassword }}"
-              },
-              {{ end }}
-              {
-                "name": "POSTGRES_PASSWORD",
-                "value": "{{ .Values.credentials.masterPassword }}"
-              }
-            ],
-            "volumeMounts": [
-              {
-                "name": "pgdata",
-                "mountPath": "/var/lib/postgresql/data"
-              }
-            ]
-          }
-        ]'
     spec:
       containers:
       - name: postgres
@@ -75,6 +33,38 @@ spec:
         env:
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: {{ .Values.resources.containerPort }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.cpu }}
+            memory: {{ .Values.resources.memory }}
+        volumeMounts:
+        - name: pgdata
+          mountPath: /var/lib/postgresql/data
+        - name: pg-config
+          mountPath: /opt/pgdata
+        - name: ssh-secret
+          mountPath: /opt/ssh-secret
+      initContainers:
+      - name: postgres-init
+        securityContext:
+          privileged: true
+        image: {{ template "pgimage" . }}
+        args: ["init"]
+        env:
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        - name: POSTGRES_TYPE
+          value: "{{ .Values.type }}"
+        - name: REPLICATION_MASTER
+          value: "{{ .Values.credentials.replicationMaster }}"
+        - name: REPLICATION_USER
+          value: "{{ .Values.credentials.replicationUser }}"
+        - name: REPLICATION_PASSWORD
+          value: "{{ .Values.credentials.replicationPassword }}"
+        - name: POSTGRES_PASSWORD
+          value: "{{ .Values.credentials.masterPassword }}"
         ports:
         - containerPort: {{ .Values.resources.containerPort }}
         resources:
